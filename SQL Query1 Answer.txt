@@ -1,0 +1,64 @@
+/****** QUERY 1  ******/
+Question 1:
+-----------
+Using the database WideWorldImporters, write a SQL query which reports the consistency between orders and their attached invoices.
+The resultset should report for each (CustomerID, CustomerName)
+ a. the total number of orders: TotalNBOrders
+ b. the number of invoices converted from an order: TotalNBInvoices
+ c. the total value of orders: OrdersTotalValue
+ d. the total value of invoices: InvoicesTotalValue
+ f. the absolute value of the difference between c - d: AbsoluteValueDifference
+ 
+ The resultset must be sorted by highest values of AbsoluteValueDifference, then by smallest to highest values of TotalNBOrders and CustomerName is that order.
+ 
+ Please note that all values in a & b must be identical by definition of the query, as we are observing orders converted into invoices.
+We are looking for potential differences between c & d.
+BUT, you must find them consistent as the data is clean in WideWorldImporters.
+
+
+WITH OrderTable AS (
+    
+	SELECT 
+        C1.OrderID 
+		, SUM(C1.Quantity * C1.UnitPrice) AS OrderTableTotal
+    
+	FROM 
+        Sales.OrderLines AS C1
+    
+	GROUP BY 
+        C1.OrderID
+),
+
+InvoicesTable AS (
+    
+	SELECT 
+        C5.InvoiceID 
+		, SUM(C5.Quantity * C5.UnitPrice) AS InvoiceTableTotal
+    
+	FROM 
+        Sales.InvoiceLines AS C5
+    
+	GROUP BY 
+        C5.InvoiceID
+)
+
+SELECT 
+    C2.CustomerID 
+    , C2.CustomerName
+    , COUNT(DISTINCT C3.OrderID) AS [TotalNBOrders]
+    , COUNT(DISTINCT C4.OrderID) AS [TotalNBInvoices]
+    , SUM(OrderTable.OrderTableTotal) AS [OrdersTotalValue]
+    , SUM(InvoicesTable.InvoiceTableTotal) AS [InvoicesTotalValue]
+    , ABS(SUM(OrderTable.OrderTableTotal) - SUM(InvoicesTable.InvoiceTableTotal)) AS [AbsoluteValueDifference]
+
+FROM Sales.Orders AS C3 INNER JOIN OrderTable ON C3.OrderID = OrderTable.OrderID
+
+INNER JOIN Sales.Invoices AS C4 ON C3.OrderID = C4.OrderID
+
+INNER JOIN InvoicesTable ON C4.InvoiceID = InvoicesTable.InvoiceID
+
+INNER JOIN Sales.Customers AS C2 ON C3.CustomerID = C2.CustomerID
+
+GROUP BY C2.CustomerID, C2.CustomerName
+
+ORDER BY AbsoluteValueDifference DESC, TotalNBOrders ASC, C2.CustomerName ASC
