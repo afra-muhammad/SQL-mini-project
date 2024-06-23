@@ -1,0 +1,226 @@
+/****** QUERY 3  ******/
+Q3.
+Using the database WideWorldImporters, write a T-SQL stored procedure called ReportCustomerTurnover.
+This procedure takes two parameters: Choice and Year, both integers.
+
+When Choice = 1 and Year = <aYear>, ReportCustomerTurnover selects all the customer names and their total monthly turnover (invoiced value) for the year <aYear>.
+
+When Choice = 2 and Year = <aYear>, ReportCustomerTurnover  selects all the customer names and their total quarterly (3 months) turnover (invoiced value) for the year <aYear>.
+
+When Choice = 3, the value of Year is ignored and ReportCustomerTurnover  selects all the customer names and their total yearly turnover (invoiced value).
+
+When no value is provided for the parameter Choice, the default value of Choice must be 1.
+When no value is provided for the parameter Year, the default value is 2013. This doesn't impact Choice = 3.
+
+For Choice = 3, the years can be hard-coded within the range of [2013-2016].
+
+NULL values in the resultsets are not acceptable and must be substituted to 0.
+
+All output resultsets are ordered by customer names alphabetically.
+
+Example datasets are provided for the following calls:
+EXEC dbo.ReportCustomerTurnover;
+EXEC dbo.ReportCustomerTurnover 1, 2014;
+EXEC dbo.ReportCustomerTurnover 2, 2015;
+EXEC dbo.ReportCustomerTurnover 3;
+
+
+
+
+CREATE PROCEDURE ReportCustomerTurnover
+
+		@Choice int = 1, 
+		@Year int = 2013
+
+AS
+BEGIN
+
+		SET NOCOUNT ON;
+
+		IF @Choice = 1
+		BEGIN
+
+					WITH InvoiceTable AS (
+    
+				SELECT 
+					C4.CustomerID
+					, C4.InvoiceID
+					, C4.InvoiceDate
+					, SUM(C5.UnitPrice * C5.Quantity) AS [Total]
+    
+				FROM 
+					Sales.Invoices as C4
+					, Sales.InvoiceLines AS C5
+		
+				WHERE
+					C4.InvoiceID = C5.InvoiceID
+					AND YEAR(C4.InvoiceDate) = @Year
+    
+				GROUP BY 
+					C4.CustomerID, C4.InvoiceID, C4.InvoiceDate
+			)
+
+			SELECT CustomerName
+					, COALESCE([1], 0) AS Jan
+					, COALESCE([2], 0) AS Feb
+					, COALESCE([3], 0) AS Mar
+					, COALESCE([4], 0) AS Apr
+					, COALESCE([5], 0) AS May
+					, COALESCE([6], 0) AS Jun
+					, COALESCE([7], 0) AS Jul
+					, COALESCE([8], 0) AS Aug
+					, COALESCE([9], 0) AS Sep
+					, COALESCE([10],0) AS Oct
+					, COALESCE([11],0) AS Nov
+					, COALESCE([12],0) AS Dec
+
+			FROM (
+
+				SELECT 
+						C2.CustomerName
+						, MONTH(InvoiceTable.InvoiceDate) AS [month_column]
+						, SUM(InvoiceTable.Total) AS [Total]
+	
+				FROM
+						Sales.Customers AS C2 
+						LEFT JOIN InvoiceTable 
+						ON C2.CustomerID = InvoiceTable.CustomerID
+
+				GROUP BY C2.CustomerName, MONTH(InvoiceTable.InvoiceDate)
+
+	 
+				 ) AS Table_sum
+ 
+
+			PIVOT (
+					SUM(Total)
+					FOR Table_sum.month_column IN ([1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12])
+				  ) AS Table_pivot
+
+			ORDER BY CustomerName
+
+		END --IF @Choice = 1
+		
+		ELSE
+		
+		BEGIN
+		IF  @Choice = 2
+		BEGIN
+
+			WITH InvoiceTable AS (
+    
+				SELECT 
+					C4.CustomerID
+					, C4.InvoiceID
+					, C4.InvoiceDate
+					, SUM(C5.UnitPrice * C5.Quantity) AS [Total]
+    
+				FROM 
+					Sales.Invoices as C4
+					, Sales.InvoiceLines AS C5
+		
+				WHERE
+					C4.InvoiceID = C5.InvoiceID
+					AND YEAR(C4.InvoiceDate) = @Year
+    
+				GROUP BY 
+					C4.CustomerID, C4.InvoiceID, C4.InvoiceDate
+			)
+
+			SELECT CustomerName
+					, COALESCE([1], 0) AS Q1
+					, COALESCE([2], 0) AS Q2
+					, COALESCE([3], 0) AS Q3
+					, COALESCE([4], 0) AS Q4
+
+
+			FROM (
+
+				SELECT 
+						C2.CustomerName
+						, DATEPART(quarter,InvoiceTable.InvoiceDate) AS [quarter_column]
+						, SUM(InvoiceTable.Total) AS [Total]
+	
+				FROM
+						Sales.Customers AS C2 
+						LEFT JOIN InvoiceTable 
+						ON C2.CustomerID = InvoiceTable.CustomerID
+
+				GROUP BY C2.CustomerName, DATEPART(quarter, InvoiceTable.InvoiceDate)
+
+	 
+				 ) AS Table_sum
+ 
+
+			PIVOT (
+					SUM(Total)
+					FOR Table_sum.quarter_column IN ([1], [2], [3], [4])
+				  ) AS Table_pivot
+
+			ORDER BY CustomerName
+
+		END
+
+		BEGIN
+		IF  @Choice = 3
+		BEGIN
+
+			WITH InvoiceTable AS (
+    
+				SELECT 
+					C4.CustomerID
+					, C4.InvoiceID
+					, C4.InvoiceDate
+					, SUM(C5.UnitPrice * C5.Quantity) AS [Total]
+    
+				FROM 
+					Sales.Invoices as C4
+					, Sales.InvoiceLines AS C5
+		
+				WHERE
+					C4.InvoiceID = C5.InvoiceID
+    
+				GROUP BY 
+					C4.CustomerID, C4.InvoiceID, C4.InvoiceDate
+			)
+
+			SELECT CustomerName
+					, COALESCE([2013], 0) AS [2013]
+					, COALESCE([2014], 0) AS [2014]
+					, COALESCE([2015], 0) AS [2015]
+					, COALESCE([2016], 0) AS [2016]
+
+
+			FROM (
+
+				SELECT 
+						C2.CustomerName
+						, DATEPART(year,InvoiceTable.InvoiceDate) AS [year_column]
+						, SUM(InvoiceTable.Total) AS [Total]
+	
+				FROM
+						Sales.Customers AS C2 
+						LEFT JOIN InvoiceTable 
+						ON C2.CustomerID = InvoiceTable.CustomerID
+
+				GROUP BY C2.CustomerName, DATEPART(year, InvoiceTable.InvoiceDate)
+
+	 
+				 ) AS Table_sum
+ 
+
+			PIVOT (
+					SUM(Total)
+					FOR Table_sum.year_column IN ([2013], [2014], [2015], [2016])
+				  ) AS Table_pivot
+
+			ORDER BY CustomerName
+
+		END
+
+		END
+		END
+		
+
+END
+GO
