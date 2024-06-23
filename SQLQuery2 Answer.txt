@@ -1,0 +1,25 @@
+/****** QUERY 2  ******/
+Q2. For the CustomerId = 1060 (CustomerName = 'Anand Mudaliyar')
+Identify the first InvoiceLine of his first Invoice, where "first" means the lowest respective IDs, and write an update query increasing the UnitPrice of this InvoiceLine by 20.
+A re-run of the query in Q1 gives the resultset in Q2-Resultset_Corrected.csv (corrected on 15th April 2018 - Summed values in columns OrdersTotalValue & InvoicesTotalValue were incorrect) .
+
+If you haven't managed to answer Q1, add the following selection query to the previous update query: CustomerId, CustomerName, InvoiceTotal. The latter is the sum of all invoice lines for the target invoice. The target InvoiceID is purposefully not shown, but the resultset post-update is given in Q2-Alternative-Resultset.csv 
+
+UPDATE [WideWorldImporters].[Sales].[InvoiceLines]
+
+SET [WideWorldImporters].[Sales].[InvoiceLines].UnitPrice = [WideWorldImporters].[Sales].[InvoiceLines].UnitPrice + 20
+
+WHERE [WideWorldImporters].[Sales].[InvoiceLines].InvoiceLineID = (
+
+	SELECT MIN(C5.InvoiceLineID) AS InvoiceLineID
+
+	FROM 
+		  [WideWorldImporters].[Sales].[Customers] AS C2
+		  , [WideWorldImporters].[Sales].[Invoices] AS C4
+		  , [WideWorldImporters].[Sales].[InvoiceLines] AS C5
+
+	WHERE
+		  C4.CustomerID = C2.CustomerID
+		  AND C5.InvoiceID = C4.InvoiceID
+		  AND C2.CustomerID = '1060' 
+)
